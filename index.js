@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({
   origin: ['https://ps-client-misha4322s-projects.vercel.app', 'https://ps-client.vercel.app/' ],
   
-  credentials: true,
+  // credentials: true,
 }));
 app.use(express.json());
 

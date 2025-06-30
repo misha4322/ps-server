@@ -21,7 +21,6 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Синхронизация корзины
 router.post('/sync', auth, async (req, res) => {
   const user_id = req.user.userId;
   const { items } = req.body;
@@ -35,7 +34,6 @@ router.post('/sync', auth, async (req, res) => {
   }
 });
 
-// Добавление сборки в корзину
 router.post('/add', auth, async (req, res) => {
   try {
     const item = await Basket.add(req.user.userId, req.body.build_id, req.body.quantity);
@@ -46,7 +44,7 @@ router.post('/add', auth, async (req, res) => {
   }
 });
 
-// Удаление элемента из корзины
+
 router.delete('/:id', auth, async (req, res) => {
   try {
     await Basket.remove(req.params.id);
@@ -57,7 +55,6 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Обновление количества
 router.put('/:id', auth, async (req, res) => {
   try {
     const item = await Basket.updateQuantity(req.params.id, req.body.quantity);

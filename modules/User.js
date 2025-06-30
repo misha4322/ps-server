@@ -1,4 +1,4 @@
-// server/modules/User.js
+
 import pool from '../db.js';
 
 export default class User {
