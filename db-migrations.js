@@ -1,4 +1,4 @@
-
+// db-migrations.js
 import pg from 'pg';
 import dotenv from 'dotenv';
 
@@ -7,11 +7,8 @@ dotenv.config();
 const { Pool } = pg;
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 
-                   `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
-  ssl: process.env.NODE_ENV === 'production' ? { 
-    rejectUnauthorized: false 
-  } : false,
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 });
 
 const runMigrations = async () => {
@@ -19,8 +16,10 @@ const runMigrations = async () => {
   try {
     await client.query('BEGIN');
 
-  
+    // Создание таблиц
     await client.query(`
+        DROP TABLE IF EXISTS Users, Components, Builds, Build_Components, Cart, Favorite, Orders, Order_Builds CASCADE;
+
       CREATE TABLE IF NOT EXISTS Users (
           id SERIAL PRIMARY KEY,
           email VARCHAR(255) NOT NULL UNIQUE,
@@ -85,6 +84,7 @@ const runMigrations = async () => {
       );
     `);
 
+    // Создание индексов
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_build_components_build ON Build_Components(build_id);
       CREATE INDEX IF NOT EXISTS idx_build_components_component ON Build_Components(component_id);
@@ -93,6 +93,7 @@ const runMigrations = async () => {
       CREATE INDEX IF NOT EXISTS idx_orders_user ON Orders(user_id);
     `);
 
+    // Вставка компонентов
     await client.query(`
       INSERT INTO Components (id, category, name, price, brand, socket) VALUES
         (1, 'processor', 'Intel Core i3-13100 [до 4.4GHz, 4 ядра]',       15000, 'Intel', 'LGA 1700'),
@@ -175,6 +176,7 @@ const runMigrations = async () => {
         brand = EXCLUDED.brand;
     `);
 
+    // Вставка сборок
     await client.query(`
       INSERT INTO Builds (id, name, image_url, total_price, is_predefined) VALUES
         (1, 'Бюджетный гейминг', 'budget_gaming.jpg', 86500, true),
@@ -189,34 +191,30 @@ const runMigrations = async () => {
         total_price = EXCLUDED.total_price,
         is_predefined = EXCLUDED.is_predefined;
     `);
- 
+
+    // Удаление существующих связей для предопределенных сборок
     await client.query(`
       DELETE FROM Build_Components 
       WHERE build_id IN (1, 2, 3, 4, 5, 6);
     `);
 
+    // Вставка связей компонентов со сборками
     await client.query(`
       INSERT INTO Build_Components (build_id, component_id) VALUES
-        -- Бюджетный гейминг
         (1, 1), (1, 10), (1, 19), (1, 28), (1, 37), (1, 46), (1, 55), (1, 64),
-        -- Средний гейминг
         (2, 2), (2, 11), (2, 20), (2, 29), (2, 38), (2, 47), (2, 56), (2, 65),
-        -- Топовый гейминг
         (3, 3), (3, 12), (3, 21), (3, 30), (3, 39), (3, 48), (3, 57), (3, 66),
-        -- AM5 гейминг
         (4, 4), (4, 13), (4, 22), (4, 31), (4, 40), (4, 49), (4, 58), (4, 67),
-        -- Рабочая станция
         (5, 5), (5, 14), (5, 23), (5, 32), (5, 41), (5, 50), (5, 59), (5, 68),
-        -- AM4 классика
         (6, 6), (6, 15), (6, 24), (6, 33), (6, 42), (6, 51), (6, 60), (6, 69);
     `);
 
     await client.query('COMMIT');
-    console.log('Миграции успешно выполнены');
-  } catch (error) {
+    console.log('✅ Database migrated successfully');
+  } catch (err) {
     await client.query('ROLLBACK');
-    console.error('Ошибка выполнения миграций:', error);
-    throw error;
+    console.error('❌ Migration failed:', err);
+    throw err;
   } finally {
     client.release();
   }
@@ -224,7 +222,7 @@ const runMigrations = async () => {
 
 runMigrations()
   .then(() => pool.end())
-  .catch((err) => {
-    console.error('Ошибка при выполнении миграций:', err);
+  .catch(err => {
+    console.error('❌ Migration error:', err);
     process.exit(1);
   });
