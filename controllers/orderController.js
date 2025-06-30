@@ -2,7 +2,7 @@ import Order from '../models/Order.js';
 
 export const createOrder = async (req, res) => {
   const user_id = req.user.userId;
-  const { phone, items } = req.body; // items - массив сборок
+  const { phone, items } = req.body; 
   
   try {
     const total = items.reduce(
@@ -10,7 +10,6 @@ export const createOrder = async (req, res) => {
       0
     );
     
-    // Передаем items в модель
     const order = await Order.create({ user_id, phone, total, items });
     
     res.status(201).json(order);
