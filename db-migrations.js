@@ -220,9 +220,4 @@ const runMigrations = async () => {
   }
 };
 
-runMigrations()
-  .then(() => pool.end())
-  .catch(err => {
-    console.error('❌ Migration error:', err);
-    process.exit(1);
-  });
+export default runMigrations;

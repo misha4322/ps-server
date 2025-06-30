@@ -49,10 +49,12 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-runMigrations().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+runMigrations()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Не удалось запустить миграции:', err);
   });
-}).catch(err => {
-  console.error('Не удалось запустить миграции:', err);
-});
