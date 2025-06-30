@@ -8,14 +8,15 @@ import basketRouter from './routes/basketRouter.js';
 import favoriteRouter from './routes/favoriteRouter.js';
 import orderRouter from './routes/orderRouter.js';
 import productRouter from './routes/productRouter.js';
-
+import runMigrations from './db-migrations.js';
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
   origin: ['https://ps-client-misha4322s-projects.vercel.app', 'https://ps-client.vercel.app/' ],
-  
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], 
+   allowedHeaders: ['Content-Type', 'Authorization'],
   // credentials: true,
 }));
 app.use(express.json());
@@ -46,4 +47,12 @@ app.get('/api/builds/:id/components', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+runMigrations().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}).catch(err => {
+  console.error('Не удалось запустить миграции:', err);
 });
