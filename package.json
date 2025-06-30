@@ -5,7 +5,7 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node index.js",
     "migrate": "node db-migrations.js",
     "build": "npm install",
     "full-deploy": "npm run migrate && npm start"
