@@ -15,7 +15,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Настройка CORS
 const allowedOrigins = [
   'https://ps-client.vercel.app',
   'https://ps-client-git-main-misha4322s-projects.vercel.app',
@@ -29,22 +28,18 @@ app.use(cors({
   credentials: true
 }));
 
-// Парсинг JSON и URL-encoded данных
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Упрощенное логгирование
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// Проверочный роут
 app.get('/', (req, res) => {
   res.send('PC Configurator API is running!');
 });
 
-// Подключение роутеров
 app.use('/api/auth', authRouter);
 app.use('/api/builds', buildRouter);
 app.use('/api/basket', basketRouter);
@@ -52,7 +47,6 @@ app.use('/api/favorites', favoriteRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/components', productRouter);
 
-// Упрощенный роут для получения компонентов сборки
 app.get('/api/builds/:id/components', async (req, res) => {
   try {
     const buildId = parseInt(req.params.id);
@@ -70,12 +64,10 @@ app.get('/api/builds/:id/components', async (req, res) => {
   }
 });
 
-// Обработка всех остальных запросов
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
-// Упрощенный обработчик ошибок
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);
   res.status(500).json({ 
@@ -83,7 +75,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Функция запуска сервера
 async function startServer() {
   try {
     await pool.query('SELECT NOW()');

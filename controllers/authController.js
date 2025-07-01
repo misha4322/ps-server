@@ -95,18 +95,20 @@ export const login = async (req, res) => {
 
 export const checkAuth = async (req, res) => {
   try {
-    const token = req.headers.authorization.split(' ')[1];
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    const user = await User.findById(decoded.userId);
-    if (!user) {
+    const { rows } = await pool.query('SELECT id, email FROM users WHERE id = $1', [decoded.userId]);
+    
+    if (rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    res.json({ 
-      id: user.id, 
-      email: user.email 
-    });
+    res.json(rows[0]);
   } catch (error) {
     console.error("Auth check error:", error);
     
