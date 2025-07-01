@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import jwt from 'jsonwebtoken';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from './db.js';
@@ -34,8 +33,8 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.error(`Запрос с этого домена запрещен: ${origin}`);
-      callback(new Error('Доступ запрещен политикой CORS'));
+      console.error(`CORS not allowed for origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -55,7 +54,7 @@ app.use((req, res, next) => {
 
 // Проверочный роут
 app.get('/', (req, res) => {
-  res.send('API конфигуратора ПК работает!');
+  res.send('PC Configurator API is running!');
 });
 
 // Подключение роутеров
@@ -70,7 +69,7 @@ app.use('/api/components', productRouter);
 app.get('/api/builds/:id/components', async (req, res) => {
   try {
     const buildId = req.params.id;
-    console.log(`Получение компонентов для сборки ID: ${buildId}`);
+    console.log(`Fetching components for build ID: ${buildId}`);
     const { rows } = await pool.query(
       `SELECT c.* 
        FROM build_components bc
@@ -78,20 +77,20 @@ app.get('/api/builds/:id/components', async (req, res) => {
        WHERE bc.build_id = $1`,
       [buildId]
     );
-    console.log(`Найдено ${rows.length} компонентов для сборки ${buildId}`);
+    console.log(`Found ${rows.length} components for build ${buildId}`);
     res.json(rows);
   } catch (error) {
-    console.error('Ошибка получения компонентов сборки:', error);
-    res.status(500).json({ message: 'Ошибка сервера' });
+    console.error('Error fetching build components:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Роут для синхронизации корзины
+// Роут для синхронизации корзины (исправленный)
 app.post('/api/basket/sync', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   
   if (!token) {
-    return res.status(401).json({ message: 'Требуется авторизация' });
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
   try {
@@ -104,6 +103,7 @@ app.post('/api/basket/sync', async (req, res) => {
     // Очищаем текущую корзину пользователя
     await pool.query('DELETE FROM cart WHERE user_id = $1', [userId]);
 
+    // Вставляем новые элементы
     for (const item of items) {
       await pool.query(
         `INSERT INTO cart (user_id, build_id, quantity)
@@ -112,8 +112,10 @@ app.post('/api/basket/sync', async (req, res) => {
       );
     }
 
+    // Завершаем транзакцию
     await pool.query('COMMIT');
 
+    // Получаем обновленную корзину с названиями и ценами
     const { rows } = await pool.query(
       `SELECT c.id, c.build_id, c.quantity, b.name, b.image_url, b.total_price
        FROM cart c
@@ -131,47 +133,49 @@ app.post('/api/basket/sync', async (req, res) => {
       total_price: row.total_price
     })));
   } catch (error) {
+    // Откатываем транзакцию при ошибке
     await pool.query('ROLLBACK');
-    console.error('Ошибка синхронизации корзины:', error);
+    console.error('Basket sync error:', error);
     
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Срок действия токена истек' });
+      return res.status(401).json({ message: 'Token expired' });
     }
     if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Неверный токен' });
+      return res.status(401).json({ message: 'Invalid token' });
     }
     
-    res.status(500).json({ message: 'Ошибка сервера: ' + error.message });
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
 
+// Обработчик ошибок
 app.use((err, req, res, next) => {
-  console.error('Глобальный обработчик ошибок:', err);
+  console.error('Global error handler:', err);
   
+  // Обработка специфических ошибок
   if (err.name === 'UnauthorizedError') {
-    return res.status(401).json({ message: 'Неверный токен авторизации' });
+    return res.status(401).json({ message: 'Invalid token' });
   }
-
+  
+  // Ошибки валидации
   if (err.name === 'ValidationError') {
     return res.status(400).json({ 
-      message: 'Ошибка валидации данных',
+      message: 'Validation failed',
       errors: err.errors 
     });
   }
-
-  if (err.code === '23505') { 
-    const field = err.constraint.split('_')[1];
+  
+  // Ошибки базы данных
+  if (err.code === '23505') { // unique_violation
     return res.status(409).json({ 
-      message: 'Дублирующая запись',
-      field: field === 'email' ? 'email' : field
+      message: 'Duplicate entry',
+      field: err.constraint.split('_')[1]
     });
   }
   
-  const statusCode = err.status || 500;
-  const message = err.message || 'Внутренняя ошибка сервера';
-  
-  res.status(statusCode).json({ 
-    message,
+  // Общая обработка ошибок
+  res.status(err.status || 500).json({ 
+    message: err.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && {
       stack: err.stack,
       fullError: JSON.stringify(err)
@@ -179,21 +183,28 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Обработка 404 для React Router
 app.get('*', (req, res) => {
-  res.status(404).json({ message: 'Ресурс не найден' });
+  res.status(404).json({ message: 'Resource not found' });
 });
 
+// Функция запуска сервера
 async function startServer() {
   try {
+    // Проверка подключения к базе данных
     await pool.query('SELECT NOW()');
-    console.log('✅ База данных подключена');
+    console.log('✅ Database connected');
+    
+    // Запуск миграций
     await runMigrations();
+    
+    // Запуск сервера
     app.listen(PORT, () => {
-      console.log(`🚀 Сервер запущен на порту ${PORT}`);
+      console.log(`🚀 Server running on port ${PORT}`);
       console.log(`   URL: http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('❌ Ошибка запуска сервера:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }
