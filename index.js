@@ -12,14 +12,16 @@ import runMigrations from './db-migrations.js';
 import bodyParser from 'body-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+
+// Получение текущего пути
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Настройка CORS
 const allowedOrigins = [
@@ -48,8 +50,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Middleware для логгирования запросов
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
   next();
 });
 
@@ -85,7 +85,7 @@ app.get('/api/builds/:id/components', async (req, res) => {
 });
 
 // Обработка всех остальных запросов
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
@@ -118,8 +118,7 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ 
     message: err.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && {
-      stack: err.stack,
-      fullError: JSON.stringify(err)
+      stack: err.stack
     })
   });
 });
