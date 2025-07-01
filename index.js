@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3000;
 // Настройка CORS
 const allowedOrigins = [
   'https://ps-client.vercel.app',
-  'https://ps-client-git-main-misha4322s-projects.vercel.app',
+  'https://ps-client-git-main-misha4322e-projects.vercel.app',
   'http://localhost:5173'
 ];
 
