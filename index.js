@@ -9,11 +9,17 @@ import favoriteRouter from './routes/favoriteRouter.js';
 import orderRouter from './routes/orderRouter.js';
 import productRouter from './routes/productRouter.js';
 import runMigrations from './db-migrations.js';
-import bodyParser from 'body-parser'; // Добавлено
+import bodyParser from 'body-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Настройка CORS
 const allowedOrigins = [
@@ -78,6 +84,11 @@ app.get('/api/builds/:id/components', async (req, res) => {
   }
 });
 
+// Обработка всех остальных запросов
+app.get('*', (req, res) => {
+  res.status(404).json({ message: "Route not found" });
+});
+
 // Обработчик ошибок
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);
@@ -133,6 +144,5 @@ async function startServer() {
     process.exit(1);
   }
 }
-
 
 startServer();
