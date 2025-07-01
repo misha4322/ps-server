@@ -68,4 +68,9 @@ runMigrations()
     console.error('Не удалось запустить миграции:', err);
   });
 
- startServer();
+ pool.query('SELECT NOW()')
+  .then(res => console.log(`✅ Database connected at ${res.rows[0].now}`))
+  .catch(err => console.error('❌ Database connection error', err));
+
+
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
