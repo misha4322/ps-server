@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 
@@ -8,33 +7,52 @@ const JWT_EXPIRES_IN = '1h';
 
 export const register = async (req, res) => {
   const { email, password } = req.body;
+  
   try {
+    // Валидация входных данных
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email и пароль обязательны' });
+      return res.status(400).json({ message: 'Email and password are required' });
     }
     
     if (password.length < 8) {
-      return res.status(400).json({ message: 'Пароль должен быть не менее 8 символов' });
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
     
-    const existingUser = await User.findByEmail(email);
-    if (existingUser) {
-      return res.status(400).json({ message: 'Пользователь уже существует' });
+    // Проверка существующего пользователя
+    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (rows.length > 0) {
+      return res.status(409).json({ message: 'User already exists' });
     }
     
-    const newUser = await User.create({ email, password });
+    // Хеширование пароля
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
     
-    const token = jwt.sign({ userId: newUser.id }, JWT_SECRET, { 
+    // Создание пользователя
+    const newUser = await pool.query(
+      'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email',
+      [email, passwordHash]
+    );
+    
+    // Генерация токена
+    const token = jwt.sign({ userId: newUser.rows[0].id }, JWT_SECRET, { 
       expiresIn: JWT_EXPIRES_IN 
     });
     
     res.status(201).json({ 
       token, 
-      user: { id: newUser.id, email: newUser.email } 
+      user: newUser.rows[0] 
     });
+    
   } catch (error) {
-    console.error('Ошибка регистрации:', error);
-    res.status(500).json({ message: 'Ошибка сервера' });
+    console.error('Registration error:', error);
+    
+    // Обработка ошибки дубликата email
+    if (error.code === '23505') {
+      return res.status(409).json({ message: 'Email already exists' });
+    }
+    
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -42,22 +60,33 @@ export const login = async (req, res) => {
   const { email, password } = req.body;
   
   try {
+    // Валидация
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
     
-    const user = await User.findByEmail(email);
-    if (!user) {
+    // Поиск пользователя
+    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (rows.length === 0) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-
+    
+    const user = rows[0];
+    
+    // Проверка пароля
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-
+    
+    // Генерация токена
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.json({ token, user: { id: user.id, email: user.email } });
+    
+    res.json({ 
+      token, 
+      user: { id: user.id, email: user.email } 
+    });
+    
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error' });
