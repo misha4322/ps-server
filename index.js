@@ -9,27 +9,39 @@ import favoriteRouter from './routes/favoriteRouter.js';
 import orderRouter from './routes/orderRouter.js';
 import productRouter from './routes/productRouter.js';
 import runMigrations from './db-migrations.js';
+
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Настройка CORS
+const allowedOrigins = [
+  'https://ps-client.vercel.app',
+  'https://ps-client-git-main-misha4322e-projects.vercel.app',
+  'http://localhost:5173'
+];
+
 app.use(cors({
-  origin: ['https://ps-client-misha4322s-projects.vercel.app', 'https://ps-client.vercel.app/' ],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], 
-   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
+
+app.use(express.json());
+
+// Middleware для логгирования
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log('Origin:', req.headers.origin);
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
-app.use(express.json());
+
+// Проверочный роут
 app.get('/', (req, res) => {
   res.send('PC Configurator API is running!');
 });
 
-
+// Подключение роутеров
 app.use('/api/auth', authRouter);
 app.use('/api/builds', buildRouter);
 app.use('/api/basket', basketRouter);
@@ -37,6 +49,7 @@ app.use('/api/favorites', favoriteRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/components', productRouter);
 
+// Роут для компонентов сборки
 app.get('/api/builds/:id/components', async (req, res) => {
   try {
     const buildId = req.params.id;
@@ -54,23 +67,40 @@ app.get('/api/builds/:id/components', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Обработчик ошибок
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  
+  if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+  
+  res.status(500).json({ 
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-runMigrations()
-  .then(() => {
+// Функция запуска сервера
+async function startServer() {
+  try {
+    // Проверка подключения к базе данных
+    await pool.query('SELECT NOW()');
+    console.log('✅ Database connected');
+    
+    // Запуск миграций
+    await runMigrations();
+    
+    // Запуск сервера
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🔗 URL: http://localhost:${PORT}`);
     });
-  })
-  .catch(err => {
-    console.error('Не удалось запустить миграции:', err);
-  });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
 
- pool.query('SELECT NOW()')
-  .then(res => console.log(`✅ Database connected at ${res.rows[0].now}`))
-  .catch(err => console.error('❌ Database connection error', err));
-
-
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Запуск сервера
+startServer();
