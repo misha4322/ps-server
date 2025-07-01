@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3000;
 // Настройка CORS
 const allowedOrigins = [
   'https://ps-client.vercel.app',
-  'https://ps-client-git-main-misha4322e-projects.vercel.app',
+  'https://ps-client-git-main-misha4322s-projects.vercel.app/',
   'http://localhost:5173'
 ];
 
@@ -112,21 +112,21 @@ async function startServer() {
   try {
     // Проверка подключения к базе данных
     await pool.query('SELECT NOW()');
-    console.log('✅ Database connected');
+    console.log(' Database connected');
     
     // Запуск миграций
     await runMigrations();
     
     // Запуск сервера
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🔗 URL: http://localhost:${PORT}`);
+      console.log(`Server running on port ${PORT}`);
+      console.log(` URL: http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error(' Failed to start server:', error);
     process.exit(1);
   }
 }
 
-// Запуск сервера
+
 startServer();

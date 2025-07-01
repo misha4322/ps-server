@@ -13,7 +13,7 @@ export const getBuilds = async (req, res) => {
                'category', c.category
              )) AS components
       FROM builds b
-      LEFT JOIN build_components bc ON b.id = bc.build_id
+      LEFT JOIN build_components bc OФN b.id = bc.build_id
       LEFT JOIN components c ON bc.component_id = c.id
     `;
     
