@@ -47,10 +47,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Проверочный роут
-app.get('/', (req, res) => {
-  res.send('PC Configurator API is running!');
-});
 
 // Подключение роутеров
 app.use('/api/auth', authRouter);
