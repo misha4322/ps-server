@@ -67,9 +67,14 @@ export const createBuild = async (req, res) => {
       [build.id]
     );
     
-    res.status(201).json(rows[0]);
+    console.log('Build created successfully:', fullBuildRes.rows[0]);
+    res.status(201).json(fullBuildRes.rows[0]);
   } catch (error) {
-    console.error('Error creating build:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Detailed error:', error);
+    res.status(500).json({ 
+      message: 'Server error',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
